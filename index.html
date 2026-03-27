@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar System</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <canvas class="renderer"></canvas>
+    <div id="planetTooltip" class="planet-tooltip" style="display: none">
+      <div class="tooltip-header">
+        <span id="tooltipEmoji">🪐</span>
+        <span id="tooltipName">Planet Name</span>
+      </div>
+      <div class="tooltip-body" id="tooltipBody"></div>
+      <div class="tooltip-close" id="tooltipClose">×</div>
+    </div>
+    <script type="module" src="solar.js"></script>
+    <!-- <script type="module" src="script.js"></script> -->
+  </body>
+</html>

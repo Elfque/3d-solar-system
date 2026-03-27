@@ -1,0 +1,158 @@
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.renderer {
+  width: 100vw;
+  height: 100vh;
+}
+
+.planet-label {
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  pointer-events: none;
+  position: absolute;
+  z-index: 100;
+}
+
+.planet-tooltip {
+  position: absolute;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(30, 30, 50, 0.95) 100%
+  );
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 0;
+  min-width: 280px;
+  max-width: 320px;
+  color: white;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 2px rgba(255, 215, 0, 0.3);
+  z-index: 1000;
+  pointer-events: none;
+  animation: fadeInUp 0.3s ease-out;
+  font-size: 14px;
+  transform-origin: bottom center;
+}
+
+.planet-tooltip::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 8px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0, 0, 0, 0.95) transparent;
+}
+
+.tooltip-header {
+  background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+  padding: 12px 16px;
+  border-radius: 12px 12px 0 0;
+  color: #000;
+  font-weight: bold;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltip-header span:first-child {
+  font-size: 24px;
+}
+
+.tooltip-body {
+  padding: 16px;
+  line-height: 1.5;
+}
+.planet-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.planet-detail-label {
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.fun-fact {
+  margin-top: 12px;
+  padding: 8px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #ffd700;
+  font-style: italic;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tooltip-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  cursor: pointer;
+  font-size: 20px;
+  color: #000;
+  font-weight: bold;
+  pointer-events: auto;
+  transition: transform 0.2s;
+}
+
+.tooltip-close:hover {
+  transform: scale(1.1);
+}
+
+/* Info panel */
+.info {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  z-index: 100;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+}
+
+/* Controls hint */
+.controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 100;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+}
+
+/* Hover effect for planets */
+.planet-hover-glow {
+  pointer-events: none;
+}
