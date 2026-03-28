@@ -1,24 +1,23 @@
 import * as three from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import {
-  EffectComposer,
-  RenderPass,
-  UnrealBloomPass,
-} from "three/examples/jsm/Addons.js";
 import { Pane } from "tweakpane";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { planetsData, getFunFact, getPlanetDetails } from "./constants";
 
-const fontLoader = new FontLoader();
 const pane = new Pane();
+const raycaster = new three.Raycaster();
+const mouse = new three.Vector2();
 
 const scene = new three.Scene();
+scene.fog = new three.FogExp2(0x050b1a, 0.0005);
+const glowLayer = 1;
 const canvas = document.querySelector(".renderer");
+const tooltip = document.getElementById("planetTooltip");
+let currentPlanet = null;
 
 const dime = { width: window.innerWidth, height: window.innerHeight };
 
-const textureLoader = new three.TextureLoader();
 // TEXTURES
+const textureLoader = new three.TextureLoader();
 const mercuryTexture = textureLoader.load("/img/mercury.jpg");
 const venusTexture = textureLoader.load("/img/venus.jpg");
 const earthTexture = textureLoader.load("/img/earth.jpg");
@@ -31,27 +30,11 @@ const plutoTexture = textureLoader.load("/img/pluto.jpg");
 
 const sunTexture = textureLoader.load("/img/sun.jpg");
 
-const starTexture = textureLoader.load("/texture/star.png");
-
 const sunGeometry = new three.SphereGeometry(2.5, 32, 16);
 const sunMaterial = new three.MeshBasicMaterial({ map: sunTexture });
 const sunObject = new three.Mesh(sunGeometry, sunMaterial);
+sunObject.layers.enable(glowLayer);
 scene.add(sunObject);
-
-const material = new three.MeshBasicMaterial({ color: 0xffffff });
-const renderText = (text) => {
-  let textMesh;
-  fontLoader.load("/fonts/font.json", (font) => {
-    const textGeometry = new TextGeometry(text, {
-      font,
-      size: 1,
-      height: 0.2,
-    });
-    textGeometry.center();
-    textMesh = new three.Mesh(textGeometry, material);
-  });
-  return textMesh;
-};
 
 const createSphere = (radius, far, texture, planetName) => {
   const orbitGeometry = new three.CircleGeometry(far, 64);
@@ -68,27 +51,13 @@ const createSphere = (radius, far, texture, planetName) => {
 
   const planetGeometry = new three.SphereGeometry(radius, 32, 16);
   const planetMaterial = new three.MeshBasicMaterial({ map: texture });
-  const planetObject = new three.Mesh(planetGeometry, planetMaterial);
-  planetObject.position.x = far;
+  const planetMesh = new three.Mesh(planetGeometry, planetMaterial);
 
-  // fontLoader.load("/fonts/font.json", (font) => {
-  //   const textGeometry = new TextGeometry(planetName ?? "Planet", {
-  //     font,
-  //     size: 1,
-  //     height: 0.2,
-  //     depth: 0.5,
-  //   });
-
-  //   const textMesh = new three.Mesh(textGeometry, material);
-  //   textMesh.lookAt(0, 0, 0);
-  //   textMesh.position.x = far;
-  //   textMesh.position.z = 3;
-  //   planetGroup.add(textMesh);
-  // });
-
-  planetGroup.add(planetObject);
+  planetMesh.position.x = far;
+  planetMesh.name = planetName;
+  planetGroup.add(planetMesh);
   scene.add(planetGroup);
-  return planetGroup;
+  return { planetMesh, far };
 };
 
 const mercury = createSphere(1.2, 5, mercuryTexture, "Mercury");
@@ -101,6 +70,18 @@ const uranus = createSphere(2.3, 37, uranusTexture, "Uranus");
 const neptune = createSphere(2.5, 44, neptuneTexture, "Neptune");
 const pluto = createSphere(2.5, 50, plutoTexture, "Pluto");
 
+const planetsArray = [
+  mercury.planetMesh,
+  venus.planetMesh,
+  earth.planetMesh,
+  mars.planetMesh,
+  jupiter.planetMesh,
+  saturn.planetMesh,
+  uranus.planetMesh,
+  neptune.planetMesh,
+  pluto.planetMesh,
+];
+
 const param = {
   speed: 1,
 };
@@ -112,24 +93,27 @@ pane.addBinding(param, "speed", {
 
 // STARS
 const createStars = () => {
-  const vertices = [];
+  const starGeometry = new three.BufferGeometry();
+  const starCount = 3000;
+  const starPositions = new Float32Array(starCount * 3);
 
-  for (let i = 0; i < 1000; i++) {
-    const x = three.MathUtils.randFloatSpread(200);
-    const y = three.MathUtils.randFloatSpread(200);
-    const z = three.MathUtils.randFloatSpread(200);
-
-    vertices.push(x, y, z);
+  for (let i = 0; i < starCount; i++) {
+    starPositions[i * 3] = (Math.random() - 0.5) * 2000;
+    starPositions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+    starPositions[i * 3 + 2] = (Math.random() - 0.5) * 500 - 100;
   }
-
-  const geometry = new three.BufferGeometry();
-  geometry.setAttribute(
+  starGeometry.setAttribute(
     "position",
-    new three.Float32BufferAttribute(vertices, 3),
+    new three.BufferAttribute(starPositions, 3),
   );
-  const material = new three.PointsMaterial({ map: starTexture });
-  const points = new three.Points(geometry, material);
-  scene.add(points);
+  const starMaterial = new three.PointsMaterial({
+    color: 0xffffff,
+    size: 0.3,
+    transparent: true,
+    opacity: 0.8,
+  });
+  const stars = new three.Points(starGeometry, starMaterial);
+  scene.add(stars);
 };
 
 createStars();
@@ -138,52 +122,124 @@ const camera = new three.PerspectiveCamera(
   40,
   dime.width / dime.height,
   1,
-  300,
+  1000,
 );
-camera.position.z = 200;
-camera.position.y = -80;
-camera.lookAt(0);
+camera.position.z = 80;
+camera.position.y = -110;
+camera.lookAt(0, 0, 0);
 scene.add(camera);
 
 const controls = new OrbitControls(camera, canvas);
+controls.enableZoom = false;
+controls.enablePan = false;
 
 const renderer = new three.WebGLRenderer({ canvas });
 renderer.setSize(dime.width, dime.height);
 renderer.render(scene, camera);
 
-// GLOW
-// const bloomScene = new three.Scene
-const composer = new EffectComposer(renderer);
-const renderPass = new RenderPass(scene, camera);
-composer.addPass(renderPass);
-const bloomPass = new UnrealBloomPass(
-  new three.Vector2(window.innerWidth, window.innerHeight),
-  4.5,
-  0.4,
-  0.85,
-);
-bloomPass.strength = 2;
-bloomPass.threshold = 0;
-bloomPass.radius = 0;
-composer.setSize(window.innerWidth, window.innerHeight);
-composer.renderToScreen = true;
-composer.addPass(bloomPass);
+let isPaused = false;
+
+function updateTooltipPosition(planetMesh) {
+  const worldPosition = planetMesh.getWorldPosition(new three.Vector3());
+  const vector = worldPosition.project(camera);
+  const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+  const y = -(vector.y * 0.5 - 0.5) * renderer.domElement.clientHeight;
+  tooltip.style.left = `${x + 20}px`;
+  tooltip.style.top = `${y - 80}px`;
+}
+
+function showTooltip(planet) {
+  const planetName = planet.name;
+  const planetData = planetsData.find((p) => p.name === planetName);
+  isPaused = true;
+  const planetEmoji = planetData.emoji;
+  const planetInfo = planetData.info;
+
+  document.getElementById("tooltipEmoji").textContent = planetEmoji;
+  document.getElementById("tooltipName").textContent = planetName;
+
+  const details = getPlanetDetails(planetName);
+  const funFact = getFunFact(planetName);
+
+  document.getElementById("tooltipBody").innerHTML = `
+                <p style="margin: 0 0 10px 0;">${planetInfo}</p>
+                ${details}
+                <div class="fun-fact">
+                    <strong>✨ Fun Fact:</strong><br>
+                    ${funFact}
+                </div>
+            `;
+
+  // Position tooltip near the planet
+  updateTooltipPosition(planet);
+
+  tooltip.style.display = "block";
+  currentPlanet = planet;
+}
+
+function hideTooltip() {
+  tooltip.style.display = "none";
+  currentPlanet = null;
+  isPaused = false;
+}
+
+function onMouseClick(event) {
+  // Calculate mouse position in normalized coordinates
+  mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+  mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(planetsArray);
+
+  if (intersects.length > 0) {
+    const clickedPlanet = intersects[0].object;
+    const planetData = planetsArray.find((p) => p.mesh === clickedPlanet);
+
+    if (currentPlanet === planetData && tooltip.style.display === "block") {
+      hideTooltip();
+    } else {
+      showTooltip(clickedPlanet);
+    }
+  } else {
+    hideTooltip();
+  }
+}
+
+window.addEventListener("click", onMouseClick, false);
+
+const clock = new three.Clock();
+let mercuryAngle = 0;
 
 const tick = () => {
   renderer.render(scene, camera);
-  mercury.rotation.z += 0.01 * param.speed;
-  venus.rotation.z += 0.0085 * param.speed;
-  earth.rotation.z += 0.007 * param.speed;
-  mars.rotation.z += 0.0055 * param.speed;
-  jupiter.rotation.z += 0.004 * param.speed;
-  saturn.rotation.z += 0.0025 * param.speed;
-  uranus.rotation.z += 0.0015 * param.speed;
-  neptune.rotation.z += 0.001 * param.speed;
-  pluto.rotation.z += 0.0009 * param.speed;
+
+  const delta = clock.getDelta();
+
+  if (!isPaused) {
+    mercuryAngle += delta * 0.5 * param.speed;
+  }
+
+  mercury.planetMesh.position.y = Math.sin(mercuryAngle) * mercury.far;
+  mercury.planetMesh.position.x = Math.cos(mercuryAngle) * mercury.far;
+  venus.planetMesh.position.y = Math.sin(mercuryAngle / 1.5) * venus.far;
+  venus.planetMesh.position.x = Math.cos(mercuryAngle / 1.5) * venus.far;
+  earth.planetMesh.position.y = Math.sin(mercuryAngle / 2) * earth.far;
+  earth.planetMesh.position.x = Math.cos(mercuryAngle / 2) * earth.far;
+  mars.planetMesh.position.y = Math.sin(mercuryAngle / 3) * mars.far;
+  mars.planetMesh.position.x = Math.cos(mercuryAngle / 3) * mars.far;
+  jupiter.planetMesh.position.y = Math.sin(mercuryAngle / 4) * jupiter.far;
+  jupiter.planetMesh.position.x = Math.cos(mercuryAngle / 4) * jupiter.far;
+  saturn.planetMesh.position.y = Math.sin(mercuryAngle / 5) * saturn.far;
+  saturn.planetMesh.position.x = Math.cos(mercuryAngle / 5) * saturn.far;
+  uranus.planetMesh.position.y = Math.sin(mercuryAngle / 7) * uranus.far;
+  uranus.planetMesh.position.x = Math.cos(mercuryAngle / 7) * uranus.far;
+  neptune.planetMesh.position.y = Math.sin(mercuryAngle / 8.5) * neptune.far;
+  neptune.planetMesh.position.x = Math.cos(mercuryAngle / 8.5) * neptune.far;
+  pluto.planetMesh.position.y = Math.sin(mercuryAngle / 10) * pluto.far;
+  pluto.planetMesh.position.x = Math.cos(mercuryAngle / 10) * pluto.far;
 
   controls.update();
-
-  // composer.render();
   window.requestAnimationFrame(tick);
 };
 tick();
